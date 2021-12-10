@@ -62,7 +62,7 @@ const signup = async (req, res, next) => {
     name,
     email,
     password: hashedPassword,
-    coins: [],
+    portfolios: [],
   });
 
   // console.log(createdUser, createdUser.id);
@@ -94,6 +94,7 @@ const signup = async (req, res, next) => {
 
 const login = async (req, res, next) => {
   const { email, password } = req.body;
+  console.log(email, password, typeof email, typeof password);
 
   let existingUser;
 
@@ -108,6 +109,7 @@ const login = async (req, res, next) => {
   }
 
   if (!existingUser) {
+    console.log("No User found");
     const error = new HttpError(
       "Invalid credentials, could not log you in.",
       401
@@ -125,6 +127,7 @@ const login = async (req, res, next) => {
   }
 
   if (!isValidPassword) {
+    console.log("Invalid credentials");
     const error = new HttpError(
       "Invalid credentials, could not log you in.",
       401
