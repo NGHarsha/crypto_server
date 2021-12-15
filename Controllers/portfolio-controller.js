@@ -15,7 +15,6 @@ const getPortfoliosByUserId = async (req, res, next) => {
       { user: req.params.id },
       { transactions: 0 }
     );
-    console.log(portfolios);
   } catch (err) {
     console.log(err);
     return next(
@@ -25,7 +24,53 @@ const getPortfoliosByUserId = async (req, res, next) => {
       )
     );
   }
-  res.json({ portfolios });
+
+  temporary = [];
+  portfolios.forEach((a) => temporary.push(JSON.parse(JSON.stringify(a))));
+
+  for (let p of temporary) {
+    let transactions;
+    try {
+      pid = mongoose.Types.ObjectId(p.id);
+
+      //Find all Transactions by portfolioId, group them by coin-symbol and sum investment,volume and retain other common fields
+      transactions = await Transaction.aggregate([
+        { $match: { portfolio: pid } },
+        {
+          $group: {
+            _id: "$symbol",
+            value: { $sum: "$investment" },
+            volume: { $sum: "$volume" },
+            name: { $first: "$name" },
+            symbol: { $first: "$symbol" },
+            image: { $first: "$image" },
+            portfolio: { $first: "$portfolio" },
+            user: { $first: "$user" },
+          },
+        },
+        {
+          $sort: {
+            value: -1,
+          },
+        },
+        {
+          $project: {
+            _id: false,
+          },
+        },
+      ]);
+      p.transactions = transactions;
+    } catch (err) {
+      return next(
+        new HttpError(
+          "Fetching Transactions  for the user failed. Please try again later.",
+          500
+        )
+      );
+    }
+  }
+
+  res.json({ portfolios: temporary });
 };
 
 const createPortfolioByUserId = async (req, res, next) => {

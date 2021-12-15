@@ -17,14 +17,14 @@ app.use("/api/transactions", transactionRouter);
 app.use("/api/users", userRouter);
 app.use("/api/portfolio", portfolioRouter);
 
-const url =
-  "https://cryptopanic.com/api/v1/posts/?auth_token=98e3469d18b340ec5ca2013fdb3a7d756b4168aa&kind=news";
+const url = `https://cryptopanic.com/api/v1/posts/?auth_token=${process.env.CRYPTOPANIC_API}&kind=news`;
 app.get("/api/news", async (req, res) => {
   let resp;
   try {
     resp = await axios.get(url);
   } catch (err) {
     console.log(err);
+    return res.status(500).json({ messsage: "An unknown error occured" });
   }
   return res.status(200).send(resp.data.results);
 });
