@@ -94,7 +94,7 @@ const signup = async (req, res, next) => {
 
 const login = async (req, res, next) => {
   const { email, password } = req.body;
-  console.log(email, password, typeof email, typeof password);
+  // console.log(email, password, typeof email, typeof password);
 
   let existingUser;
 

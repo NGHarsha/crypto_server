@@ -2,7 +2,7 @@ const HttpError = require("../Models/http-error");
 const jwt = require("jsonwebtoken");
 
 module.exports = (req, res, next) => {
-  console.log(req.headers.authorization);
+  // console.log(req.headers.authorization);
   try {
     const token = req.headers.authorization.split(" ")[1]; // Authorization: 'Bearer TOKEN'
     // console.log(token);
@@ -14,7 +14,7 @@ module.exports = (req, res, next) => {
       token,
       "jwt secret goes here. Replace with secret."
     );
-    console.log(decodedToken);
+    // console.log(decodedToken);
     req.userData = { userId: decodedToken.userId };
     next();
   } catch (err) {

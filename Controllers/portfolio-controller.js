@@ -149,7 +149,7 @@ const addTransactionByPortfolioId = async (req, res, next) => {
   let portfolio;
   try {
     portfolio = await Portfolio.findById(pid).populate("transactions");
-    console.log(portfolio);
+    // console.log(portfolio);
   } catch (err) {
     return next(
       new HttpError("Something went wrong. Please try again later"),

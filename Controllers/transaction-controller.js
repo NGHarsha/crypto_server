@@ -160,7 +160,7 @@ const postTransactionsByUserId = async (req, res, next) => {
 
 const getTransactionHistory = async (req, res, next) => {
   var symbol = req.params.symbol.toUpperCase();
-  console.log(symbol);
+  // console.log(symbol);
   const resp = await axios.get(
     `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1d`
   );
