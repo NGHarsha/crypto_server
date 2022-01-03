@@ -52,20 +52,54 @@ const getAggTransactionsByPortfolioId = async (req, res, next) => {
 
   // let userWithTransactions;
 
-  let pid = req.params.id;
-  let uid = req.userData.userId;
+  // if (req.params.id === undefined) {
+  //   try {
+  //     primaryPortfolio = await Portfolio.findOne({ isPrimary: true, user: uid });
+  //   } catch (err) {
+  //     console.log(err);
+  //     return next(
+  //       new HttpError(
+  //         "Fetching Portfolios  for the user failed. Please try again later.",
+  //         500
+  //       )
+  //     );
+  //   }
+  //   pid = primaryPortfolio.id;
+  // } else {
+  //   pid = req.params.id;
+  // }
 
+  let uid = req.userData.userId;
+  let pid;
   let portfolio;
-  try {
-    portfolio = await Portfolio.findById(pid);
-  } catch (err) {
-    return next(
-      new HttpError("Something went wrong. Please try again later"),
-      500
-    );
+
+  if (req.params.id) {
+    console.log(req.params.id);
+    try {
+      portfolio = await Portfolio.findById(req.params.id, { transactions: 0 });
+    } catch (err) {
+      console.log(err);
+      return next(
+        new HttpError("Something went wrong. Please try again later"),
+        500
+      );
+    }
+  } else {
+    try {
+      portfolio = await Portfolio.findOne({ isPrimary: true, user: uid });
+    } catch (err) {
+      console.log(err);
+      return next(
+        new HttpError(
+          "Fetching Portfolios  for the user failed. Please try again later.",
+          500
+        )
+      );
+    }
   }
 
   if (!portfolio) {
+    console.log("portfolio not found");
     const error = new HttpError("Portfolio not found");
     return next(error);
   }
@@ -75,23 +109,34 @@ const getAggTransactionsByPortfolioId = async (req, res, next) => {
     return next(new HttpError("Something went wrong."), 500);
   }
 
+  pid = portfolio.id;
+  console.log(pid);
+
+  let port = JSON.parse(JSON.stringify(portfolio));
+
   var transactions;
   try {
     pid = mongoose.Types.ObjectId(pid);
 
     //Find all Transactions by portfolioId, group them by coin-symbol and sum investment,volume and retain other common fields
+
     transactions = await Transaction.aggregate([
       { $match: { portfolio: pid } },
       {
         $group: {
           _id: "$symbol",
-          value: { $sum: "$investment" },
+          investment: { $sum: "$investment" },
           volume: { $sum: "$volume" },
           name: { $first: "$name" },
           symbol: { $first: "$symbol" },
           image: { $first: "$image" },
           portfolio: { $first: "$portfolio" },
           user: { $first: "$user" },
+        },
+      },
+      {
+        $sort: {
+          investment: -1,
         },
       },
       {
@@ -108,7 +153,10 @@ const getAggTransactionsByPortfolioId = async (req, res, next) => {
       )
     );
   }
-  res.json({ transactions });
+
+  port.transactions = transactions;
+
+  res.json({ portfolio: port });
 };
 
 const postTransactionsByUserId = async (req, res, next) => {
@@ -118,7 +166,7 @@ const postTransactionsByUserId = async (req, res, next) => {
 
   const newTransaction = new Transaction({
     name,
-    symbol,
+    symbol: symbol.toUpperCase(),
     image,
     volume,
     atprice,

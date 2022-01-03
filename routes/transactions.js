@@ -8,6 +8,7 @@ const checkAuth = require("../middleware/check-auth");
 
 //the routes below this middleware will be reached only if jwt verification succeeds
 router.use(checkAuth);
+router.get("/portfolio", transactionController.getAggTransactionsByPortfolioId);
 router.get(
   "/portfolio/:id",
   transactionController.getAggTransactionsByPortfolioId

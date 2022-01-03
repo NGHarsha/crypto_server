@@ -25,52 +25,52 @@ const getPortfoliosByUserId = async (req, res, next) => {
     );
   }
 
-  temporary = [];
-  portfolios.forEach((a) => temporary.push(JSON.parse(JSON.stringify(a))));
+  // temporary = [];
+  // portfolios.forEach((a) => temporary.push(JSON.parse(JSON.stringify(a))));
 
-  for (let p of temporary) {
-    let transactions;
-    try {
-      pid = mongoose.Types.ObjectId(p.id);
+  // for (let p of temporary) {
+  //   let transactions;
+  //   try {
+  //     pid = mongoose.Types.ObjectId(p.id);
 
-      //Find all Transactions by portfolioId, group them by coin-symbol and sum investment,volume and retain other common fields
-      transactions = await Transaction.aggregate([
-        { $match: { portfolio: pid } },
-        {
-          $group: {
-            _id: "$symbol",
-            value: { $sum: "$investment" },
-            volume: { $sum: "$volume" },
-            name: { $first: "$name" },
-            symbol: { $first: "$symbol" },
-            image: { $first: "$image" },
-            portfolio: { $first: "$portfolio" },
-            user: { $first: "$user" },
-          },
-        },
-        {
-          $sort: {
-            value: -1,
-          },
-        },
-        {
-          $project: {
-            _id: false,
-          },
-        },
-      ]);
-      p.transactions = transactions;
-    } catch (err) {
-      return next(
-        new HttpError(
-          "Fetching Transactions  for the user failed. Please try again later.",
-          500
-        )
-      );
-    }
-  }
+  //     //Find all Transactions by portfolioId, group them by coin-symbol and sum investment,volume and retain other common fields
+  //     transactions = await Transaction.aggregate([
+  //       { $match: { portfolio: pid } },
+  //       {
+  //         $group: {
+  //           _id: "$symbol",
+  //           value: { $sum: "$investment" },
+  //           volume: { $sum: "$volume" },
+  //           name: { $first: "$name" },
+  //           symbol: { $first: "$symbol" },
+  //           image: { $first: "$image" },
+  //           portfolio: { $first: "$portfolio" },
+  //           user: { $first: "$user" },
+  //         },
+  //       },
+  //       {
+  //         $sort: {
+  //           value: -1,
+  //         },
+  //       },
+  //       {
+  //         $project: {
+  //           _id: false,
+  //         },
+  //       },
+  //     ]);
+  //     p.transactions = transactions;
+  //   } catch (err) {
+  //     return next(
+  //       new HttpError(
+  //         "Fetching Transactions  for the user failed. Please try again later.",
+  //         500
+  //       )
+  //     );
+  //   }
+  // }
 
-  res.json({ portfolios: temporary });
+  res.json({ portfolios });
 };
 
 const createPortfolioByUserId = async (req, res, next) => {
@@ -158,6 +158,7 @@ const addTransactionByPortfolioId = async (req, res, next) => {
   }
 
   if (!portfolio) {
+    console.log(error);
     const error = new HttpError("Portfolio not found");
     return next(error);
   }
@@ -182,7 +183,7 @@ const addTransactionByPortfolioId = async (req, res, next) => {
   if (type === "buy") {
     newTransaction = new Transaction({
       name,
-      symbol,
+      symbol: symbol.toUpperCase(),
       image,
       volume,
       atprice,
@@ -194,7 +195,7 @@ const addTransactionByPortfolioId = async (req, res, next) => {
   } else if (type === "sell") {
     newTransaction = new Transaction({
       name,
-      symbol,
+      symbol: symbol.toUpperCase(),
       image,
       volume: -volume,
       atprice,
@@ -227,6 +228,72 @@ const addTransactionByPortfolioId = async (req, res, next) => {
   return res.status(201).json({ portfolio: portfolio });
 };
 
+const deleteTransactionByPortfolioId = async (req, res, next) => {
+  const pid = mongoose.Types.ObjectId(req.body.portfolio);
+  const uid = req.userData.userId;
+  const symbol = req.body.symbol;
+  console.log("Inside delete");
+  let portfolio;
+  try {
+    portfolio = await Portfolio.findById(pid);
+    // console.log(portfolio);
+  } catch (err) {
+    return next(
+      new HttpError("Something went wrong. Please try again later"),
+      500
+    );
+  }
+
+  if (!portfolio) {
+    const error = new HttpError("Portfolio not found");
+    return next(error);
+  }
+
+  if (uid !== portfolio.user.toString()) {
+    console.log("User is not the owner of portfolio");
+    return next(new HttpError("Something went wrong."), 500);
+  }
+
+  try {
+    const sess = await mongoose.startSession();
+    sess.startTransaction();
+    const t = await Transaction.find(
+      { portfolio: pid, symbol, user: uid },
+      { _id: 1, investment: 1 },
+      { session: sess }
+    );
+    console.log(t);
+    let temp = 0;
+    t.forEach((i) => (temp += i.investment));
+    console.log(temp);
+
+    await Portfolio.updateOne(
+      { _id: pid },
+      {
+        $pull: { transactions: { $in: t } },
+        $set: { investment: portfolio.investment - temp },
+      },
+      { session: sess }
+    );
+    await Transaction.deleteMany(
+      { portfolio: pid, symbol, user: uid },
+      { session: sess }
+    );
+
+    await sess.commitTransaction();
+  } catch (err) {
+    console.log(err);
+    const error = new HttpError(
+      "Deleting transaction failed, please try again.",
+      500
+    );
+    return next(error);
+  }
+
+  return res.status(201).send({ msg: "Delete Success" });
+};
+
 exports.getPortfoliosByUserId = getPortfoliosByUserId;
 exports.createPortfolioByUserId = createPortfolioByUserId;
 exports.addTransactionByPortfolioId = addTransactionByPortfolioId;
+exports.deleteTransactionByPortfolioId = deleteTransactionByPortfolioId;

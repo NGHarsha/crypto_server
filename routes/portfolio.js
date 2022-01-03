@@ -13,5 +13,6 @@ router.post(
   portfolioController.createPortfolioByUserId
 );
 router.post("/:id", portfolioController.addTransactionByPortfolioId);
+router.delete("/:id", portfolioController.deleteTransactionByPortfolioId);
 
 module.exports = router;

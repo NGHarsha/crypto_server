@@ -1,53 +1,39 @@
-const express = require("express");
-const app = express();
-app.use(express.json());
+const WebSocket = require("ws");
 const mongoose = require("mongoose");
-const axios = require("axios");
-const cors = require("cors");
-
-const transactionRouter = require("./routes/transactions.js");
-const userRouter = require("./routes/users");
-const portfolioRouter = require("./routes/portfolio");
-
+const cron = require("node-cron");
+let app = require("./app"); // note, that's your main.js file above
 const dotenv = require("dotenv").config();
+const newsCronJob = require("./middleware/news-cron");
 
-app.use(cors());
-
-app.use("/api/transactions", transactionRouter);
-app.use("/api/users", userRouter);
-app.use("/api/portfolio", portfolioRouter);
-
-const url = `https://cryptopanic.com/api/v1/posts/?auth_token=${process.env.CRYPTOPANIC_API}&kind=news`;
-app.get("/api/news", async (req, res) => {
-  let resp;
-  try {
-    resp = await axios.get(url);
-  } catch (err) {
-    console.log(err);
-    return res.status(500).json({ messsage: "An unknown error occured" });
-  }
-  return res.status(200).send(resp.data.results);
-});
-
-app.get("/", (req, res) => {
-  res.status(200).send("Welcome");
-});
-
-app.use((error, req, res, next) => {
-  if (res.headerSent) {
-    return next(error);
-  }
-  res.status(error.code || 500);
-  res.json({ message: error.message || "An unknown error occurred!" });
+let WSServer = WebSocket.Server;
+let server = require("http").createServer();
+let wss = new WSServer({
+  server: server,
 });
 
 const port = process.env.PORT || 5000;
 
+wss.on("connection", (ws) => {
+  //connection is up, let's add a simple simple event
+  ws.on("message", (message) => {
+    //log the received message and send it back to the client
+    console.log("received: %s", message);
+    ws.send(`Hello, you sent -> ${message}`);
+  });
+
+  //send immediatly a feedback to the incoming connection
+  ws.send("Hi there, I am a WebSocket server");
+});
+
+server.on("request", app);
+
+cron.schedule("* * * * *", newsCronJob);
+
 mongoose
   .connect(process.env.MONGODB_URI)
   .then(() => {
-    app.listen(port, () => {
-      console.log("Server listening on " + port);
+    server.listen(port, function () {
+      console.log(`Server/WS started on ${port}`);
     });
   })
   .catch((err) => {
