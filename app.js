@@ -4,6 +4,8 @@ app.use(express.json());
 const mongoose = require("mongoose");
 const axios = require("axios");
 const cors = require("cors");
+const device = require("express-device");
+const useragent = require("express-useragent");
 
 const transactionRouter = require("./routes/transactions.js");
 const userRouter = require("./routes/users");
@@ -11,6 +13,8 @@ const portfolioRouter = require("./routes/portfolio");
 const newsRouter = require("./routes/news.js");
 
 app.use(cors());
+app.use(device.capture());
+app.use(useragent.express());
 
 app.use("/api/transactions", transactionRouter);
 app.use("/api/users", userRouter);

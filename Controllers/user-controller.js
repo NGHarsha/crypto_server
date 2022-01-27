@@ -69,6 +69,7 @@ const signup = async (req, res, next) => {
 
   //try creating a token before saving user to the database. In that case even if token creation fails db will not be uypdated.
   let token;
+  console.log(req.device.type);
   try {
     token = jwt.sign(
       { userId: createdUser.id, email: createdUser.email },
@@ -93,6 +94,7 @@ const signup = async (req, res, next) => {
 };
 
 const login = async (req, res, next) => {
+  console.log(req.useragent);
   const { email, password } = req.body;
   // console.log(email, password, typeof email, typeof password);
 
